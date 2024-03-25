@@ -49,11 +49,35 @@ def auction_detail(request, item_id):
         Q(house_type=auction_detail.house_type)
     ).exclude(id=auction_detail.id)
 
+
+    # Today
+    s_a = AuctionItem.objects.filter(
+        Q(address__icontains=auction_detail.address) and
+        Q(house_type=auction_detail.house_type) and
+        Q(end_time__gt=timezone.now()) and 
+        Q(current_bid__gt=0)
+    )
+
+    avg_per_sq_feet_price = 0
+    avg_per_floor_price = 0
+    count = 0
+    for auction in s_a:
+        avg_per_sq_feet_price += (auction.current_bid / auction.house_size)
+        avg_per_floor_price += (auction.current_bid / auction.floor_count)
+        count += 1
+    
+    avg_per_floor_price = avg_per_floor_price / count 
+    avg_per_sq_feet_price = avg_per_sq_feet_price / count
+
+    predicted_value = (auction_detail.house_size * avg_per_sq_feet_price + auction_detail.floor_count * avg_per_floor_price) / 2
+
     if (len(similar_auctions) >= 5):
         similar_auctions = similar_auctions[:5]
     
 
-    return render(request, 'auction_detail.html', {'auction_detail': auction_detail,'similar_auctions': similar_auctions})
+    predicted_value = int(predicted_value)
+
+    return render(request, 'auction_detail.html', {'auction_detail': auction_detail,'similar_auctions': similar_auctions, 'predicted_value':predicted_value})
 
 
 def search_live_auctions(request):
